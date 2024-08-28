@@ -20,6 +20,12 @@ from mace.tools import torch_geometric, torch_tools, utils
 from mace.tools.compile import prepare
 from mace.tools.scripts_utils import extract_load
 
+try:
+    import intel_extension_for_pytorch as ipex
+except:
+    pass
+
+
 
 def get_model_dtype(model: torch.nn.Module) -> torch.dtype:
     """Get the dtype of the model"""
@@ -131,6 +137,10 @@ class MACECalculator(Calculator):
             self.use_compile = False
         for model in self.models:
             model.to(device)  # shouldn't be necessary but seems to help with GPU
+    #if 'ipex' in sys.modules:
+        if device == "xpu":
+            for model in self.models:
+                model = ipex.optimize(model) # shouldn't be necessary but seems to help with GPU
         r_maxs = [model.r_max.cpu() for model in self.models]
         r_maxs = np.array(r_maxs)
         assert np.all(
