@@ -40,20 +40,16 @@ from mace.tools.scripts_utils import (
     print_git_commit,
 )
 from mace.tools.slurm_distributed import DistributedEnvironment
-from mace.tools.mpi_distributed import MPIDistributedEnvironment
+#from mace.tools.mpi_distributed import MPIDistributedEnvironment
 from mace.tools.utils import AtomicNumberTable
 import datetime
 
 
-#ipeximport sys
 try:
     import intel_extension_for_pytorch as ipex
 except:
     pass
-#vamatry:
-#vama    from mpi4py import MPI
-#vamaexcept:
-#vama    pass
+#vamimport sys
 
 def main() -> None:
     """
@@ -687,7 +683,7 @@ def run(args: argparse.Namespace) -> None:
         optimizer = torch.optim.Adam(**param_options)
 
     #if 'ipex' in sys.modules:
-    if device = 'xpu':
+    if device == torch.device("xpu"):
         model, optimizer = ipex.optimize(model, optimizer=optimizer)
 
     logger = tools.MetricsLogger(

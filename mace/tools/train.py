@@ -35,10 +35,10 @@ try:
     import intel_extension_for_pytorch as ipex
 except:
     pass
-try:
-    import oneccl_bindings_for_pytorch as torch_ccl  # noqa F401
-except:
-    pass
+#try:
+#    import oneccl_bindings_for_pytorch as torch_ccl  # noqa F401
+#except:
+#    pass
 
 @dataclasses.dataclass
 class SWAContainer:
@@ -354,11 +354,13 @@ def take_step(
     batch = batch.to(device)
     optimizer.zero_grad(set_to_none=True)
     batch_dict = batch.to_dict()
+
     #if 'ipex' in sys.modules:
-    if device == "xpu":
-        model.to("xpu")
-        batch.to("xpu")
+    if device == torch.device("xpu"):
+        #print(f'{next(batch.parameters()).device} batch '*4)
+        #batch = batch.to(device) #Q: is neccesary?vama
         model, optimizer = ipex.optimize(model, optimizer=optimizer)
+
     output = model(
         batch_dict,
         training=True,
@@ -393,21 +395,16 @@ def evaluate(
     for param in model.parameters():
         param.requires_grad = False
 
-    #if device = 'xpu':
-    #model = ipex.optimize(model)
+    #if device == torch.device("xpu"):
+    #    model = ipex.optimize(model)
     metrics = MACELoss(loss_fn=loss_fn).to(device)
 
     start_time = time.time()
     for batch in data_loader:
     #if 'ipex' in sys.modules:
-        if device == "xpu":
-            print(f'###'*20)
-        if device == "xpu":
-            batch = batch.to("xpu")
-            model = model.to("xpu")
-            #batch = batch.to("xpu:0")
-        #batch = batch.to(device)
-            #model = model.to("xpu:0")
+        if device == torch.device("xpu"):
+            batch = batch.to(device)
+            model = model.to(device)
         batch_dict = batch.to_dict()
         output = model(
             batch_dict,

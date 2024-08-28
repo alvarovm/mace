@@ -12,13 +12,13 @@ import numpy as np
 import torch
 from e3nn.io import CartesianTensor
 
+
+TensorDict = Dict[str, torch.Tensor]
+
 try:
     import intel_extension_for_pytorch as ipex
 except:
     pass
-
-TensorDict = Dict[str, torch.Tensor]
-
 
 def to_one_hot(indices: torch.Tensor, num_classes: int) -> torch.Tensor:
     """
@@ -71,13 +71,13 @@ def init_device(device_str: str) -> torch.device:
         return torch.device("mps")
     #if 'ipex' in sys.modules:
     if device_str == "xpu":
+        devices = torch.xpu.device_count()
         is_available = devices > 0
         assert is_available, logging.info("No XPU backend is available")
-        devices = torch.xpu.device_count()
         torch.xpu.memory_stats()
         logging.info("Using XPU GPU acceleration")
-        #return torch.device("xpu:0")
         return torch.device("xpu")
+        #return torch.device("xpu")
 
     logging.info("Using CPU")
     return torch.device("cpu")
