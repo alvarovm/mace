@@ -60,7 +60,7 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         "--device",
         help="select device",
         type=str,
-        choices=["cpu", "cuda", "mps"],
+        choices=["cpu", "cuda", "mps", "xpu"],
         default="cpu",
     )
     parser.add_argument(
@@ -73,6 +73,12 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--distributed",
         help="train in multi-GPU data parallel mode",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--use_mpi",
+        help="train in multi-GPU data parallel mode with mpi",
         action="store_true",
         default=False,
     )

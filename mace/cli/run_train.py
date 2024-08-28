@@ -40,8 +40,20 @@ from mace.tools.scripts_utils import (
     print_git_commit,
 )
 from mace.tools.slurm_distributed import DistributedEnvironment
+from mace.tools.mpi_distributed import MPIDistributedEnvironment
 from mace.tools.utils import AtomicNumberTable
+import datetime
 
+
+#ipeximport sys
+try:
+    import intel_extension_for_pytorch as ipex
+except:
+    pass
+#vamatry:
+#vama    from mpi4py import MPI
+#vamaexcept:
+#vama    pass
 
 def main() -> None:
     """
@@ -58,17 +70,56 @@ def run(args: argparse.Namespace) -> None:
     args, input_log_messages = tools.check_args(args)
     tag = tools.get_tag(name=args.name, seed=args.seed)
     if args.distributed:
-        try:
-            distr_env = DistributedEnvironment()
-        except Exception as e:  # pylint: disable=W0703
-            logging.error(f"Failed to initialize distributed environment: {e}")
-            return
+        if args.use_mpi:
+            try:
+                from mace.tools.mpi_distributed import MPIDistributedEnvironment
+                distr_env = MPIDistributedEnvironment()
+                print('MPI Environment set: ', distr_env)
+                print('World size: ', distr_env.world_size)
+                print('Rank: ', distr_env.rank)
+                print('Local rank: ', distr_env.local_rank)
+
+            except Exception as e:  # pylint: disable=W0703
+                logging.error(f"Failed to initialize distributed environment with mpi: {e}")
+                return
+        else:
+            try:
+                distr_env = DistributedEnvironment()
+            except Exception as e:  # pylint: disable=W0703
+                logging.error(f"Failed to initialize distributed environment with slurm: {e}")
+                return
         world_size = distr_env.world_size
         local_rank = distr_env.local_rank
         rank = distr_env.rank
         if rank == 0:
             print(distr_env)
-        torch.distributed.init_process_group(backend="nccl")
+        print(f"world_size={world_size}, local_rank= {local_rank}, rank= {rank}")
+        if args.use_mpi:
+            init_method = 'env://'
+            if args.device == 'cuda':
+                backend = 'nccl'
+                torch.distributed.init_process_group(
+                    backend     = backend,
+                    init_method = init_method,
+                    world_size  = world_size,
+                    rank        = rank,
+                    timeout     = datetime.timedelta(seconds=120)
+                     )
+            else:
+                #backend = 'gloo'
+                torch.distributed.init_process_group(
+                    init_method = init_method,
+                    world_size  = world_size,
+                    rank        = rank,
+                    timeout     = datetime.timedelta(seconds=120)
+                   )
+
+
+
+
+
+        else:
+            torch.distributed.init_process_group(backend="nccl")
     else:
         rank = int(0)
 
@@ -80,7 +131,10 @@ def run(args: argparse.Namespace) -> None:
         logging.log(level=loglevel, msg=message)
 
     if args.distributed:
-        torch.cuda.set_device(local_rank)
+        if args.device == 'cuda':
+            torch.cuda.set_device(local_rank)
+        else:
+            print('mpi distributed')
         logging.info(f"Process group initialized: {torch.distributed.is_initialized()}")
         logging.info(f"Processes: {world_size}")
 
@@ -631,6 +685,10 @@ def run(args: argparse.Namespace) -> None:
         optimizer = adamw_schedulefree.AdamWScheduleFree(**_param_options)
     else:
         optimizer = torch.optim.Adam(**param_options)
+
+    #if 'ipex' in sys.modules:
+    if device = 'xpu':
+        model, optimizer = ipex.optimize(model, optimizer=optimizer)
 
     logger = tools.MetricsLogger(
         directory=args.results_dir, tag=tag + "_train"
